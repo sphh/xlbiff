@@ -2,6 +2,7 @@
 # Display one line for each of the last N new messages in an IMAP mailbox.
 # Designed for use with xlbiff.
 # By Stephen Gildea, November 2021.
+# By Stephan Helma, November 2024.
 
 """
 This script does three things:
@@ -187,7 +188,16 @@ def main():
             # ('OK', parts)
 
             if not args.quiet:
-                output_imap_message_parts(fetch_data, encoding)
+                try:
+                    output_imap_message_parts(fetch_data, encoding)
+                except BrokenPipeError:
+                    # https://docs.python.org/3/library/signal.html#note-on-sigpipe
+
+                    # Python flushes standard streams on exit; redirect
+                    # remaining output to devnull to avoid another
+                    # BrokenPipeError at shutdown
+                    devnull = os.open(os.devnull, os.O_WRONLY)
+                    os.dup2(devnull, sys.stdout.fileno())
 
     if not mailbox_is_maildir:
         imapc.logout()
